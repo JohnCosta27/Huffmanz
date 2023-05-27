@@ -1,5 +1,6 @@
 const std = @import("std");
 const mem = std.mem;
+const expect = std.testing.expect;
 
 const Heap = struct {
     array: []i32,
@@ -12,7 +13,7 @@ const Heap = struct {
         };
     }
 
-    pub fn heapify(allocator: mem.Allocator, array: []i32) !void {
+    pub fn heapify(allocator: mem.Allocator, array: []i32) !Heap {
         const memory = try allocator.alloc(i32, 8);
 
         const myHeap = Heap{
@@ -23,15 +24,12 @@ const Heap = struct {
         mem.copy(i32, myHeap.array, array);
 
         myHeap.build_max_heap();
-
-        for (myHeap.array) |item| {
-            std.debug.print("Element: {}\n", .{item});
-        }
+        return myHeap;
     }
 
     fn build_max_heap(self: Heap) void {
         var counter: usize = 0;
-        while (counter < self.array.len) {
+        while (counter < std.math.sqrt(self.array.len)) {
             self.max_heapify(counter);
             counter += 1;
         }
@@ -61,9 +59,19 @@ const Heap = struct {
     }
 };
 
-pub fn main() !void {
+test "Build heap from array" {
     const allocator = std.heap.page_allocator;
     var myArr = [_]i32{ 32, 100, 343, 28, 20, 32, 13, 5 };
 
-    _ = try Heap.heapify(allocator, myArr[0..]);
+    const myHeap = try Heap.heapify(allocator, myArr[0..]);
+
+    var counter: usize = 0;
+    while (counter < std.math.sqrt(myHeap.array.len)) {
+        const left = 2 * counter + 1;
+        const right = 2 * counter + 2;
+
+        try expect(myHeap.array[counter] >= myHeap.array[left] and myHeap.array[counter] >= myHeap.array[right]);
+
+        counter += 1;
+    }
 }
