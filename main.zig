@@ -40,6 +40,20 @@ const Heap = struct {
         self.max_heapify(0);
     }
 
+    pub fn remove(self: *Heap) ?Element {
+        if (self.pointer <= 0) {
+            return undefined;
+        }
+
+        const max_item = self.array[0];
+
+        self.array[0] = self.array[self.pointer - 1];
+        self.pointer -= 1;
+        self.max_heapify(0);
+
+        return max_item;
+    }
+
     fn build_max_heap(self: Heap) void {
         var counter: usize = 0;
         while (counter < std.math.sqrt(self.array.len)) {
@@ -93,11 +107,13 @@ const PriorityQueue = struct {
         return self.heap.array.len <= 0;
     }
 
-    pub fn enqueue() void {
-        // self.heap.insert();
+    pub fn enqueue(self: PriorityQueue, item: Element) void {
+        self.heap.insert(item);
     }
 
-    pub fn dequeue() []u8 {}
+    pub fn dequeue(self: PriorityQueue) ?Element {
+        return self.heap.remove();
+    }
 };
 
 test "Build heap from array" {
@@ -131,7 +147,7 @@ test "Build heap from array" {
     }
 }
 
-test "Inserts items into heap" {
+test "Inserts and removing items into/from heap" {
     const allocator = std.heap.page_allocator;
     var myArr = [_]Element{ Element{
         .value = "32",
@@ -164,6 +180,7 @@ test "Inserts items into heap" {
     myHeap.print();
 
     var counter: usize = 0;
+
     while (counter < std.math.sqrt(myHeap.array.len)) {
         const left = 2 * counter + 1;
         const right = 2 * counter + 2;
@@ -172,4 +189,9 @@ test "Inserts items into heap" {
 
         counter += 1;
     }
+
+    const max_item = myHeap.remove();
+    const max_priority: i32 = 343;
+
+    try expect(max_item.?.priority == max_priority);
 }
