@@ -5,7 +5,7 @@ const h = @import("heap.zig");
 const Heap = h.Heap;
 const Element = e.Element;
 
-const PriorityQueue = struct {
+pub const PriorityQueue = struct {
     heap: Heap,
 
     pub fn init(allocator: std.mem.Allocator) !PriorityQueue {
