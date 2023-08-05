@@ -1,25 +1,59 @@
 const std = @import("std");
-const Element = @import("element.zig");
-const Heap = @import("heap.zig");
+const e = @import("element.zig");
+const h = @import("heap.zig");
+
+const Heap = h.Heap;
+const Element = e.Element;
 
 const PriorityQueue = struct {
     heap: Heap,
 
-    pub fn init(allocator: std.mem.Allocator) PriorityQueue {
+    pub fn init(allocator: std.mem.Allocator) !PriorityQueue {
+        var myHeap = try Heap.init(allocator);
         return PriorityQueue{
-            .allocator = allocator,
+            .heap = myHeap,
         };
     }
 
     pub fn is_empty(self: PriorityQueue) bool {
-        return self.heap.array.len <= 0;
+        return self.heap.max() == null;
     }
 
-    pub fn enqueue(self: PriorityQueue, item: Element) void {
+    pub fn enqueue(self: *PriorityQueue, item: Element) void {
         self.heap.insert(item);
     }
 
-    pub fn dequeue(self: PriorityQueue) ?Element {
+    pub fn dequeue(self: *PriorityQueue) ?Element {
         return self.heap.remove();
     }
+
+    pub fn peek(self: PriorityQueue) ?Element {
+        if (self.is_empty()) {
+            return undefined;
+        }
+
+        return self.heap.max();
+    }
 };
+
+const expect = std.testing.expect;
+
+test "Queues items in correct order" {
+    const allocator = std.heap.page_allocator;
+
+    var q = try PriorityQueue.init(allocator);
+
+    try expect(q.is_empty() == true);
+
+    const element = Element{
+        .value = "Should be first",
+        .priority = 420,
+    };
+
+    q.enqueue(element);
+
+    try expect(q.is_empty() == false);
+
+    const popped = q.dequeue();
+    try expect(popped.?.priority == 420);
+}
