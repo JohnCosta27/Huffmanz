@@ -54,6 +54,17 @@ test "Queues items in correct order" {
 
     try expect(q.is_empty() == false);
 
-    const popped = q.dequeue();
+    var popped = q.peek();
     try expect(popped.?.priority == 420);
+
+    const anotherElement = Element{
+        .value = "now i'm first",
+        .priority = 42069,
+    };
+
+    q.enqueue(anotherElement);
+
+    popped = q.peek();
+
+    try expect(popped.?.priority == 42069);
 }
