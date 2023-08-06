@@ -6,6 +6,12 @@ const PriorityQueue = Queue.PriorityQueue;
 const el = @import("element.zig");
 const Element = el.Element;
 
+pub const TreeNode = struct {
+    // String
+    value: []const u8,
+    priority: i32,
+};
+
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
     const myString = "Hello world";
