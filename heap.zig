@@ -136,34 +136,34 @@ test "Build heap" {
     try expectEqual(@as(i32, 1), heap.remove().?);
 }
 
-// test "Heal with a custom struct type" {
-// const allocator = std.heap.page_allocator;
-//
-// var heap = try Heap(CustomType, lessThanCustom).init(allocator);
-//
-// const first = CustomType{
-// .value = @as(u8, 50),
-// };
-// const second = CustomType{
-// .value = @as(u8, 100),
-// };
-// const third = CustomType{
-// .value = @as(u8, 20),
-// };
-//
-// heap.insert(first);
-// try expect(heap.max().?.value == 50);
-//
-// _ = heap.remove();
-//
-// const removedItem = heap.max();
-// try expect(removedItem == null);
-//
-// heap.insert(first);
-// heap.insert(second);
-// heap.insert(third);
-//
-// try expectEqual(@as(u8, 100), heap.remove().?.value);
-// try expectEqual(@as(u8, 50), heap.remove().?.value);
-// try expectEqual(@as(u8, 20), heap.remove().?.value);
-// }
+test "Heal with a custom struct type" {
+    const allocator = std.heap.page_allocator;
+
+    var heap = try Heap(CustomType, lessThanCustom).init(allocator);
+
+    const first = CustomType{
+        .value = @as(u8, 50),
+    };
+    const second = CustomType{
+        .value = @as(u8, 100),
+    };
+    const third = CustomType{
+        .value = @as(u8, 20),
+    };
+
+    heap.insert(first);
+    try expect(heap.max().?.value == 50);
+
+    _ = heap.remove();
+
+    const removedItem = heap.max();
+    try expect(removedItem == null);
+
+    heap.insert(first);
+    heap.insert(second);
+    heap.insert(third);
+
+    try expectEqual(@as(u8, 100), heap.remove().?.value);
+    try expectEqual(@as(u8, 50), heap.remove().?.value);
+    try expectEqual(@as(u8, 20), heap.remove().?.value);
+}
