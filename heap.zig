@@ -19,13 +19,6 @@ pub fn Heap(comptime T: type, comptime compareFn: fn (T, T) Order) type {
             };
         }
 
-        pub fn heapify(self: Self, array: []T) Self {
-            mem.copy(T, self.array, array);
-
-            self.build_max_heap();
-            return self;
-        }
-
         pub fn max(self: Self) ?T {
             if (self.pointer == 0) {
                 return null;
@@ -35,8 +28,8 @@ pub fn Heap(comptime T: type, comptime compareFn: fn (T, T) Order) type {
 
         pub fn insert(self: *Self, item: T) void {
             self.array[self.pointer] = item;
+            self.sift_up(self.pointer);
             self.pointer += 1;
-            self.max_heapify(0);
         }
 
         pub fn remove(self: *Self) ?T {
@@ -48,51 +41,55 @@ pub fn Heap(comptime T: type, comptime compareFn: fn (T, T) Order) type {
 
             self.array[0] = self.array[self.pointer - 1];
             self.pointer -= 1;
-            self.max_heapify(0);
+            self.sift_down(0);
 
             return max_item;
         }
 
-        fn build_max_heap(self: Self) void {
-            var counter: usize = 0;
-            while (counter < std.math.sqrt(self.array.len)) {
-                self.max_heapify(counter);
-                counter += 1;
+        fn sift_up(self: Self, index: usize) void {
+            // Base case
+            if (index <= 0) return;
+
+            var parent: usize = 0;
+            if (index % 2 == 0) {
+                parent = (index - 2) / 2;
+            } else {
+                parent = (index - 1) / 2;
+            }
+
+            const comparison = compareFn(self.array[parent], self.array[index]);
+
+            if (comparison == Order.lt) {
+                const temp = self.array[parent];
+                self.array[parent] = self.array[index];
+                self.array[index] = temp;
+                self.sift_up(parent);
             }
         }
+        fn sift_down(self: Self, index: usize) void {
+            // Base case
+            const firstChildIndex = 2 * index + 1;
+            if (self.pointer <= firstChildIndex) return;
 
-        fn max_heapify(self: Self, pos: usize) void {
-            if (self.pointer <= pos) return;
+            const secondChildIndex = 2 * index + 2;
+            var largestIndex: usize = index;
 
-            const left = 2 * pos + 1;
-            const right = 2 * pos + 2;
-
-            var largest = pos;
-
-            const order = compareFn(self.array[left], self.array[right]);
-
-            if (order == .gt and self.pointer > left) {
-                largest = left;
+            if (compareFn(self.array[largestIndex], self.array[firstChildIndex]) == Order.lt) {
+                largestIndex = firstChildIndex;
             }
 
-            if (order == .lt and self.pointer > right) {
-                largest = right;
+            if (self.pointer > secondChildIndex) {
+                if (compareFn(self.array[largestIndex], self.array[secondChildIndex]) == Order.lt) {
+                    largestIndex = secondChildIndex;
+                }
             }
 
-            if (largest != pos) {
-                const temp = self.array[largest];
-                self.array[largest] = self.array[pos];
-                self.array[pos] = temp;
-                self.max_heapify(largest);
+            if (largestIndex != index) {
+                const temp = self.array[largestIndex];
+                self.array[largestIndex] = self.array[index];
+                self.array[index] = temp;
+                self.sift_down(largestIndex);
             }
-        }
-
-        pub fn print(self: Self) void {
-            std.debug.print("\n", .{});
-            for (self.array) |item| {
-                std.debug.print("{}, ", .{item});
-            }
-            std.debug.print("\n", .{});
         }
     };
 }
@@ -121,16 +118,22 @@ test "Build heap" {
     heap.insert(3);
     heap.insert(4);
     heap.insert(12);
-    // heap.insert(20);
-    // heap.insert(1);
-    // heap.insert(10);
+    heap.insert(20);
+    heap.insert(35);
+    heap.insert(2);
+    heap.insert(1);
+    heap.insert(10);
+    heap.insert(40);
 
-    // try expectEqual(@as(i32, 20), heap.remove().?);
-    // try expectEqual(@as(i32, 10), heap.remove().?);
+    try expectEqual(@as(i32, 40), heap.remove().?);
+    try expectEqual(@as(i32, 35), heap.remove().?);
+    try expectEqual(@as(i32, 20), heap.remove().?);
+    try expectEqual(@as(i32, 12), heap.remove().?);
+    try expectEqual(@as(i32, 10), heap.remove().?);
     try expectEqual(@as(i32, 4), heap.remove().?);
     try expectEqual(@as(i32, 3), heap.remove().?);
-    try expectEqual(@as(i32, 12), heap.remove().?);
-    // try expectEqual(@as(i32, 1), heap.remove().?);
+    try expectEqual(@as(i32, 2), heap.remove().?);
+    try expectEqual(@as(i32, 1), heap.remove().?);
 }
 
 // test "Heal with a custom struct type" {
