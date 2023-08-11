@@ -44,6 +44,7 @@ pub fn main() !void {
         const node = try allocator.create(TreeNode);
         node.* = .{
             .value = entry.key_ptr.*,
+            // We want to have the lowest probability be highest priority, hence the inversion.
             .probability = -entry.value_ptr.*,
             .left_child = null,
             .right_child = null,
