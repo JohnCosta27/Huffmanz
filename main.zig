@@ -19,7 +19,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "Hello";
+    const myString = "aabcd";
 
     // Map between ASCII and frequency
     var charMap = std.AutoHashMap(u8, i32).init(page_alloc);
@@ -42,9 +42,9 @@ pub fn main() !void {
 
     while (mapIter.next()) |entry| {
         const node = try allocator.create(TreeNode);
-        node.* = TreeNode{
+        node.* = .{
             .value = entry.key_ptr.*,
-            .probability = entry.value_ptr.*,
+            .probability = -entry.value_ptr.*,
             .left_child = null,
             .right_child = null,
         };
@@ -55,30 +55,46 @@ pub fn main() !void {
     // At least 2 items in heap.
     while (heap.pointer > 1) {
         const left = heap.remove();
-        std.debug.print("{}\n", .{left.?.value});
         const right = heap.remove();
-        const parent = try allocator.create(TreeNode);
 
-        parent.* = TreeNode{
+        // Because we would return the items that are in the array of the heap.
+        // And the pointers in the array don't change, we would end up with
+        // Recursive relations A -> B -> A
+        // So to fix this I create copies, seperate.
+        // I don't think this is ideal.
+        const copies = try allocator.alloc(TreeNode, 3);
+
+        copies[0] = .{
+            .value = left.?.value,
+            .probability = left.?.probability,
+            .left_child = left.?.left_child,
+            .right_child = left.?.right_child,
+        };
+
+        copies[1] = .{
+            .value = right.?.value,
+            .probability = right.?.probability,
+            .left_child = right.?.left_child,
+            .right_child = right.?.right_child,
+        };
+
+        copies[2] = .{
             .value = 0,
             .probability = left.?.probability + right.?.probability,
-            .left_child = &left.?,
-            .right_child = &right.?,
+            .left_child = &copies[0],
+            .right_child = &copies[1],
         };
-        heap.insert(parent.*);
+
+        heap.insert(copies[2]);
     }
 
     const nodePointer = heap.remove().?;
-
-    std.debug.print("{*}\n", .{nodePointer.left_child.?});
-    std.debug.print("{*}\n", .{nodePointer.left_child.?.left_child.?});
-    std.debug.print("{*}\n", .{nodePointer.left_child.?.left_child.?.left_child.?});
 
     traverse(&nodePointer);
 }
 
 fn traverse(node: ?*const TreeNode) void {
-    // std.debug.print("{}\n", .{node.?.value});
+    std.debug.print("{}\n", .{node.?.value});
     if (node.?.left_child) |left| {
         traverse(left);
     }

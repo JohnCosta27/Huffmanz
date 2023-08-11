@@ -19,6 +19,10 @@ pub fn Heap(comptime T: type, comptime compareFn: fn (T, T) Order) type {
             };
         }
 
+        pub fn deinit(self: Self) void {
+            self.allocator.free(self.array);
+        }
+
         pub fn max(self: Self) ?T {
             if (self.pointer == 0) {
                 return null;
@@ -111,6 +115,7 @@ test "Build heap" {
     const allocator = std.heap.page_allocator;
 
     var heap = try Heap(i32, lessThani32).init(allocator);
+    defer heap.deinit();
 
     const bruh = heap.max();
     try expect(bruh == undefined);
@@ -140,6 +145,7 @@ test "Heal with a custom struct type" {
     const allocator = std.heap.page_allocator;
 
     var heap = try Heap(CustomType, lessThanCustom).init(allocator);
+    defer heap.deinit();
 
     const first = CustomType{
         .value = @as(u8, 50),
