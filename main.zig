@@ -14,7 +14,8 @@ pub const TreeNode = struct {
 };
 
 fn lessThanTree(A: TreeNode, B: TreeNode) Order {
-    return std.math.order(A.probability, B.probability);
+    // We want to have the lowest probability be highest priority, hence the inversion.
+    return std.math.order(B.probability, A.probability);
 }
 
 pub fn main() !void {
@@ -44,8 +45,7 @@ pub fn main() !void {
         const node = try allocator.create(TreeNode);
         node.* = .{
             .value = entry.key_ptr.*,
-            // We want to have the lowest probability be highest priority, hence the inversion.
-            .probability = -entry.value_ptr.*,
+            .probability = entry.value_ptr.*,
             .left_child = null,
             .right_child = null,
         };
