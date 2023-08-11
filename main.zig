@@ -9,8 +9,8 @@ pub const TreeNode = struct {
     // char
     value: u8,
     probability: i32,
-    left_child: ?*TreeNode,
-    right_child: ?*TreeNode,
+    left_child: ?*const TreeNode,
+    right_child: ?*const TreeNode,
 };
 
 fn lessThanTree(A: TreeNode, B: TreeNode) Order {
@@ -19,7 +19,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "Hello world";
+    const myString = "Hello";
 
     // Map between ASCII and frequency
     var charMap = std.AutoHashMap(u8, i32).init(page_alloc);
@@ -33,65 +33,56 @@ pub fn main() !void {
         }
     }
 
+    var arena = std.heap.ArenaAllocator.init(page_alloc);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
     var heap = try Heap(TreeNode, lessThanTree).init(page_alloc);
     var mapIter = charMap.iterator();
 
     while (mapIter.next()) |entry| {
-        var node: TreeNode = TreeNode{
+        const node = try allocator.create(TreeNode);
+        node.* = TreeNode{
             .value = entry.key_ptr.*,
             .probability = entry.value_ptr.*,
             .left_child = null,
             .right_child = null,
         };
 
-        heap.insert(node);
+        heap.insert(node.*);
     }
 
     // At least 2 items in heap.
     while (heap.pointer > 1) {
-        var left = heap.remove().?;
-        var right = heap.remove().?;
-        var newNode = TreeNode{
-            .value = 0,
-            .probability = left.probability + right.probability,
-            .left_child = &left,
-            .right_child = &right,
-        };
+        const left = heap.remove();
+        std.debug.print("{}\n", .{left.?.value});
+        const right = heap.remove();
+        const parent = try allocator.create(TreeNode);
 
-        heap.insert(newNode);
+        parent.* = TreeNode{
+            .value = 0,
+            .probability = left.?.probability + right.?.probability,
+            .left_child = &left.?,
+            .right_child = &right.?,
+        };
+        heap.insert(parent.*);
     }
 
-    // const nodePointer = heap.remove().?;
+    const nodePointer = heap.remove().?;
 
-    var firstChild = TreeNode{
-        .value = 5,
-        .probability = 5,
-        .left_child = null,
-        .right_child = null,
-    };
+    std.debug.print("{*}\n", .{nodePointer.left_child.?});
+    std.debug.print("{*}\n", .{nodePointer.left_child.?.left_child.?});
+    std.debug.print("{*}\n", .{nodePointer.left_child.?.left_child.?.left_child.?});
 
-    var secondChild = TreeNode{
-        .value = 10,
-        .probability = 10,
-        .left_child = null,
-        .right_child = null,
-    };
-    var root = TreeNode{
-        .value = 1,
-        .probability = 5,
-        .left_child = &secondChild,
-        .right_child = &firstChild,
-    };
-
-    traverse(&root);
+    traverse(&nodePointer);
 }
 
 fn traverse(node: ?*const TreeNode) void {
-    std.debug.print("{}\n", .{node.?.value});
-    if (node.?.left_child != null) {
-        traverse(node.?.left_child.?);
+    // std.debug.print("{}\n", .{node.?.value});
+    if (node.?.left_child) |left| {
+        traverse(left);
     }
-    if (node.?.right_child != null) {
-        traverse(node.?.right_child.?);
+    if (node.?.right_child) |right| {
+        traverse(right);
     }
 }
