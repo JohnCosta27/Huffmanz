@@ -5,6 +5,9 @@ const Order = std.math.Order;
 const h = @import("heap.zig");
 const Heap = h.Heap;
 
+const expect = std.testing.expect;
+const expectEqual = std.testing.expectEqual;
+
 pub const TreeNode = struct {
     // char
     value: u8,
@@ -89,17 +92,94 @@ pub fn main() !void {
         heap.insert(copies[2]);
     }
 
-    const nodePointer = heap.remove().?;
+    // const nodePointer = heap.remove().?;
 
-    traverse(&nodePointer);
+    var x: u8 = 1;
+    x = x << 2;
+    std.debug.print("{b}\n", .{x});
 }
 
-fn traverse(node: ?*const TreeNode) void {
-    std.debug.print("{}\n", .{node.?.value});
-    if (node.?.left_child) |left| {
-        traverse(left);
+fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
+    var myPath = path;
+
+    if (node.value == search) {
+        return myPath;
     }
-    if (node.?.right_child) |right| {
-        traverse(right);
+
+    if (node.left_child) |left| {
+        myPath = myPath << 1;
+        const ret = walk(left.*, search, myPath);
+        if (ret != null) {
+            return myPath;
+        }
     }
+
+    if (node.right_child) |right| {
+        myPath = myPath << 1;
+        myPath += 1;
+        const ret = walk(right.*, search, myPath);
+        std.debug.print("\nright:{?}\n", .{ret});
+        if (ret != null) {
+            return myPath;
+        }
+        myPath -= 1;
+    }
+
+    return null;
+}
+
+test "Walk function" {
+    const first = TreeNode{
+        .value = 1,
+        .probability = 0,
+        .left_child = null,
+        .right_child = null,
+    };
+
+    const second = TreeNode{
+        .value = 2,
+        .probability = 0,
+        .left_child = null,
+        .right_child = null,
+    };
+
+    const third = TreeNode{
+        .value = 3,
+        .probability = 0,
+        .left_child = null,
+        .right_child = null,
+    };
+
+    const forth = TreeNode{
+        .value = 4,
+        .probability = 0,
+        .left_child = null,
+        .right_child = null,
+    };
+
+    const firstParent = TreeNode{
+        .value = 0,
+        .probability = 0,
+        .left_child = &first,
+        .right_child = &second,
+    };
+
+    const secondParent = TreeNode{
+        .value = 0,
+        .probability = 0,
+        .left_child = &third,
+        .right_child = &forth,
+    };
+
+    const root = TreeNode{
+        .value = 0,
+        .probability = 0,
+        .left_child = &firstParent,
+        .right_child = &secondParent,
+    };
+
+    // try expectEqual(walk(root, 1, 0).?, 0);
+    try expectEqual(@as(u8, 1), walk(root, 2, 0).?);
+    // try expectEqual(walk(root, 3, 0).?, 2);
+    // try expectEqual(walk(root, 4, 0).?, 3);
 }
