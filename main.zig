@@ -93,10 +93,6 @@ pub fn main() !void {
     }
 
     // const nodePointer = heap.remove().?;
-
-    var x: u8 = 1;
-    x = x << 2;
-    std.debug.print("{b}\n", .{x});
 }
 
 fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
@@ -110,22 +106,45 @@ fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
         myPath = myPath << 1;
         const ret = walk(left.*, search, myPath);
         if (ret != null) {
-            return myPath;
+            return ret;
         }
+        myPath = myPath >> 1;
     }
 
     if (node.right_child) |right| {
         myPath = myPath << 1;
         myPath += 1;
-        const ret = walk(right.*, search, myPath);
-        std.debug.print("\nright:{?}\n", .{ret});
+        var ret = walk(right.*, search, myPath);
         if (ret != null) {
-            return myPath;
+            return ret;
         }
         myPath -= 1;
+        myPath = myPath >> 1;
     }
 
     return null;
+}
+
+fn count_bits_used(num: u8) u8 {
+    var mask: u8 = 0b10000000;
+    var counter: u8 = 0;
+    while (mask != 0 and mask & num == 0) {
+        counter += 1;
+        mask = mask >> 1;
+    }
+    return 8 - counter;
+}
+
+test "left most function" {
+    try expectEqual(@as(u8, 8), count_bits_used(0b11111111));
+    try expectEqual(@as(u8, 7), count_bits_used(0b01111111));
+    try expectEqual(@as(u8, 6), count_bits_used(0b00111111));
+    try expectEqual(@as(u8, 5), count_bits_used(0b00011111));
+    try expectEqual(@as(u8, 4), count_bits_used(0b00001111));
+    try expectEqual(@as(u8, 3), count_bits_used(0b00000111));
+    try expectEqual(@as(u8, 2), count_bits_used(0b00000011));
+    try expectEqual(@as(u8, 1), count_bits_used(0b00000001));
+    try expectEqual(@as(u8, 0), count_bits_used(0b00000000));
 }
 
 test "Walk function" {
@@ -178,8 +197,75 @@ test "Walk function" {
         .right_child = &secondParent,
     };
 
-    // try expectEqual(walk(root, 1, 0).?, 0);
-    try expectEqual(@as(u8, 1), walk(root, 2, 0).?);
-    // try expectEqual(walk(root, 3, 0).?, 2);
-    // try expectEqual(walk(root, 4, 0).?, 3);
+    // Important to start with 1. otherwise bitshifting on 0s would do nothing.
+    try expectEqual(@as(u8, 0b00000100), walk(root, 1, 1).?);
+    try expectEqual(@as(u8, 0b00000101), walk(root, 2, 1).?);
+    try expectEqual(@as(u8, 0b00000110), walk(root, 3, 1).?);
+    try expectEqual(@as(u8, 0b00000111), walk(root, 4, 1).?);
+
+    var bitmask: u64 = 0;
+    var bitmask_used: u8 = 0;
+
+    var bruh = walk(root, 1, 1).?;
+    // Minus 1 because of the beginning 1.
+    var bruhUsed = count_bits_used(bruh) - 1;
+    try expectEqual(@as(u8, 2), bruhUsed);
+
+    var cleanBruh = bruh - std.math.pow(u8, 2, bruhUsed);
+    try expectEqual(@as(u8, 0b00000000), cleanBruh);
+
+    var shifted_bits: u64 = @as(u64, cleanBruh);
+    shifted_bits = shifted_bits << @truncate(u6, (64 - (bitmask_used + bruhUsed)));
+
+    bitmask |= shifted_bits;
+    bitmask_used += bruhUsed;
+
+    var test_counter: u64 = 0;
+
+    try expectEqual(@as(u8, 2), bitmask_used);
+    try expectEqual(test_counter, bitmask);
+
+    // ------------
+
+    bruh = walk(root, 4, 1).?;
+    bruhUsed = count_bits_used(bruh) - 1;
+    cleanBruh = bruh - std.math.pow(u8, 2, bruhUsed);
+
+    try expectEqual(@as(u8, 2), bruhUsed);
+    try expectEqual(@as(u8, 0b00000111), bruh);
+    try expectEqual(@as(u8, 0b00000011), cleanBruh);
+    try expectEqual(@as(u8, 2), bruhUsed);
+
+    shifted_bits = @as(u64, cleanBruh);
+    shifted_bits = shifted_bits << @truncate(u6, (64 - (bitmask_used + bruhUsed)));
+
+    bitmask |= shifted_bits;
+    bitmask_used += bruhUsed;
+
+    test_counter += std.math.pow(u64, 2, 61) + std.math.pow(u64, 2, 60);
+
+    try expectEqual(@as(u8, 4), bitmask_used);
+    try expectEqual(@as(u64, test_counter), bitmask);
+
+    // ----------
+
+    bruh = walk(root, 3, 1).?;
+    bruhUsed = count_bits_used(bruh) - 1;
+    cleanBruh = bruh - std.math.pow(u8, 2, bruhUsed);
+
+    try expectEqual(@as(u8, 2), bruhUsed);
+    try expectEqual(@as(u8, 0b00000110), bruh);
+    try expectEqual(@as(u8, 0b00000010), cleanBruh);
+    try expectEqual(@as(u8, 2), bruhUsed);
+
+    shifted_bits = @as(u64, cleanBruh);
+    shifted_bits = shifted_bits << @truncate(u6, (64 - (bitmask_used + bruhUsed)));
+
+    bitmask |= shifted_bits;
+    bitmask_used += bruhUsed;
+
+    test_counter += std.math.pow(u64, 2, 59);
+
+    try expectEqual(@as(u8, 6), bitmask_used);
+    try expectEqual(test_counter, bitmask);
 }
