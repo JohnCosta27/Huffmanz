@@ -92,7 +92,45 @@ pub fn main() !void {
         heap.insert(copies[2]);
     }
 
-    // const nodePointer = heap.remove().?;
+    const nodePointer = heap.remove().?;
+
+    var bitmask: u64 = 0;
+    var bitmask_used: u8 = 0;
+
+    for (myString) |char| {
+        var pattern = walk(nodePointer, char, 1).?;
+        var bits_used = count_bits_used(pattern) - 1;
+
+        var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
+
+        var shifted_pattern: u64 = @as(u64, clean_pattern) << @truncate(u6, (64 - bits_used - bitmask_used));
+
+        bitmask |= shifted_pattern;
+        bitmask_used += bits_used;
+    }
+
+    std.debug.print("{b}\n", .{bitmask});
+
+    // var bitmask: u64 = 0;
+    // var bitmask_used: u8 = 0;
+    //
+    // var bruh = walk(nodePointer, 1, 1).?;
+    // var bruhUsed = count_bits_used(bruh) - 1;
+    // try expectEqual(@as(u8, 2), bruhUsed);
+    //
+    // var cleanBruh = bruh - std.math.pow(u8, 2, bruhUsed);
+    // try expectEqual(@as(u8, 0b00000000), cleanBruh);
+    //
+    // var shifted_bits: u64 = @as(u64, cleanBruh);
+    // shifted_bits = shifted_bits << @truncate(u6, (64 - (bitmask_used + bruhUsed)));
+    //
+    // bitmask |= shifted_bits;
+    // bitmask_used += bruhUsed;
+    //
+    // var test_counter: u64 = 0;
+    //
+    // try expectEqual(@as(u8, 2), bitmask_used);
+    // try expectEqual(test_counter, bitmask);
 }
 
 fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
@@ -133,6 +171,16 @@ fn count_bits_used(num: u8) u8 {
         mask = mask >> 1;
     }
     return 8 - counter;
+}
+
+test "Random stuff" {
+    const x = "bruh";
+
+    std.debug.print("\n", .{});
+    for (x) |a| {
+        std.debug.print("{c}", .{a});
+    }
+    std.debug.print("\n", .{});
 }
 
 test "left most function" {
