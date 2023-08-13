@@ -24,6 +24,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
     const myString = "aabcd";
+    const wordSize = myString.len;
 
     // Map between ASCII and frequency
     var charMap = std.AutoHashMap(u8, i32).init(page_alloc);
@@ -133,13 +134,14 @@ pub fn main() !void {
     // TreeSize (u16) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
 
     const size_as_u8 = std.mem.asBytes(&item_counter);
+    const word_size_as_u8 = std.mem.asBytes(&wordSize);
 
     try writer.writeAll(size_as_u8[0..]);
+    try writer.writeAll(word_size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
     try writer.writeAll(inOrderArr[0..]);
     try writer.writeAll(bytes[0..]);
 
-    std.debug.print("------\n", .{});
     try decompress();
 }
 
@@ -151,11 +153,22 @@ fn decompress() !void {
 
     const findFile = try std.fs.cwd().openFile("output.bin", .{});
     const max_size: usize = 999999;
-    const content = try findFile.reader().readAllAlloc(allocator, max_size);
+    var content = try findFile.reader().readAllAlloc(allocator, max_size);
 
     const tree_size = @intCast(u16, content[0]) + (@intCast(u16, content[1]) << 8);
+
+    const word_size = @as(usize, convertToU64(content[0..@sizeOf(usize)]));
+    std.debug.print("Word Size: {}\n", .{word_size});
+
+    const offset = @sizeOf(u16) + @sizeOf(usize);
+
     var index: u8 = 0;
-    _ = try build_tree(allocator, content[2..(tree_size + 2)], content[(tree_size + 2)..(tree_size * 2 + 2)], 0, @truncate(u8, tree_size) - 1, &index);
+    _ = try build_tree(allocator, content[offset..(tree_size + offset)], content[(tree_size + offset)..(tree_size * 2 + offset)], 0, @truncate(u8, tree_size) - 1, &index);
+
+    // Mirrored so we can do % 2 trick to know to go left or right.
+    const bitmask_offset = tree_size * 2 + offset;
+    const mirrored_bitmask = std.mem.readInt(u64, @ptrCast(*const [8]u8, &content[bitmask_offset..(bitmask_offset + 8)]), std.builtin.Endian.Little);
+    std.debug.print("{b}\n", .{mirrored_bitmask});
 }
 
 fn preOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
@@ -272,8 +285,8 @@ fn count_bits_used(num: u8) u8 {
 fn mirror_bitmask(bitmask: u64) u64 {
     var mirrored: u64 = 0;
     var i: usize = 0;
-    while (i < @bitSizeOf(u8)) {
-        mirrored |= (bitmask >> @truncate(u3, i) & 1) << @truncate(u3, 7 - i);
+    while (i < @bitSizeOf(u64)) {
+        mirrored |= (bitmask >> @truncate(u6, i) & 1) << @truncate(u6, @bitSizeOf(u64) - 1 - i);
         i += 1;
     }
     return mirrored;
