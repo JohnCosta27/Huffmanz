@@ -43,6 +43,7 @@ pub fn main() !void {
 
     var heap = try Heap(TreeNode, lessThanTree).init(page_alloc);
     var mapIter = charMap.iterator();
+    var item_counter: u64 = 0;
 
     while (mapIter.next()) |entry| {
         const node = try allocator.create(TreeNode);
@@ -52,6 +53,7 @@ pub fn main() !void {
             .left_child = null,
             .right_child = null,
         };
+        item_counter += 1;
 
         heap.insert(node.*);
     }
@@ -89,6 +91,8 @@ pub fn main() !void {
             .right_child = &copies[1],
         };
 
+        item_counter += 1;
+
         heap.insert(copies[2]);
     }
 
@@ -114,13 +118,93 @@ pub fn main() !void {
     const writer = file.writer();
 
     const bytes = u64ToBytes(bitmask);
+
+    var preOrderArr = try allocator.alloc(u8, item_counter);
+    var preOrderIndex: usize = 0;
+    preOrderTraversal(nodePointer, preOrderArr, &preOrderIndex);
+
+    var inOrderArr = try allocator.alloc(u8, item_counter);
+    var inOrderIndex: usize = 0;
+    inOrderTraversal(nodePointer, inOrderArr, &inOrderIndex);
+
+    // Format
+    // TreeSize (u64) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
+
+    std.debug.print("{}\n", .{item_counter});
+    const size_as_u8 = u64ToBytes(item_counter);
+    std.debug.print("{}\n", .{size_as_u8[7]});
+
+    try writer.writeAll(size_as_u8[0..]);
+    try writer.writeAll(preOrderArr[0..]);
+    try writer.writeAll(inOrderArr[0..]);
     try writer.writeAll(bytes[0..]);
 }
 
+fn preOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
+    arr[arrPointer.*] = node.value;
+    arrPointer.* += 1;
+
+    if (node.left_child) |left| {
+        preOrderTraversal(left.*, arr, arrPointer);
+    }
+
+    if (node.right_child) |right| {
+        preOrderTraversal(right.*, arr, arrPointer);
+    }
+}
+
+fn inOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
+    if (node.left_child) |left| {
+        inOrderTraversal(left.*, arr, arrPointer);
+    }
+
+    arr[arrPointer.*] = node.value;
+    arrPointer.* += 1;
+
+    if (node.right_child) |right| {
+        inOrderTraversal(right.*, arr, arrPointer);
+    }
+}
+
+fn search_node(traversal: []u8, value: u8) u8 {
+    var i = 0;
+    while (i < traversal.len) {
+        if (traversal[i] == value) {
+            return i;
+        }
+        i += 1;
+    }
+    @panic("Could not find node in traversal");
+}
+
+fn build_tree(preOrder: []u8, inOrder: []u8, inOrderStart: u8, inOrderEnd: u8, preOrderIndex: *u8) *TreeNode {
+    if (inOrderStart > inOrderEnd) {
+        return null;
+    }
+
+    var node = TreeNode{
+        .value = preOrder[preOrderIndex.*],
+        .probability = 0,
+        .left_child = null,
+        .right_child = null,
+    };
+
+    if (inOrderStart == inOrderEnd) {
+        return &node;
+    }
+
+    const inOrderIndex = search_node(inOrder, node.value);
+
+    node.left_child = build_tree(preOrder, inOrder, inOrderStart, inOrderIndex - 1, preOrderIndex);
+    node.right_child = build_tree(preOrder, inOrder, inOrderIndex, inOrderEnd);
+
+    return node;
+}
+
+// Probably a better way to do this
 fn u64ToBytes(u: u64) []u8 {
     var bytes: [8]u8 = undefined;
 
-    // Manually extract each byte and place it into the slice
     bytes[0] = @truncate(u8, u >> 56);
     bytes[1] = @truncate(u8, u >> 48);
     bytes[2] = @truncate(u8, u >> 40);
@@ -130,7 +214,6 @@ fn u64ToBytes(u: u64) []u8 {
     bytes[6] = @truncate(u8, u >> 8);
     bytes[7] = @truncate(u8, u);
 
-    // Convert the fixed-size array into a slice
     return bytes[0..];
 }
 
@@ -174,14 +257,20 @@ fn count_bits_used(num: u8) u8 {
     return 8 - counter;
 }
 
-test "Random stuff" {
-    const x = "bruh";
+test "Random stuff\n" {
+    var myStruct = TreeNode{
+        .value = 1,
+        .probability = 321,
+        .left_child = null,
+        .right_child = null,
+    };
 
-    std.debug.print("\n", .{});
-    for (x) |a| {
-        std.debug.print("{c}", .{a});
+    var byteSlice = std.mem.toBytes(myStruct);
+    const expectedSize = @sizeOf(TreeNode);
+
+    if (byteSlice.len != expectedSize) {
+        @panic("Byte slice size doesn't match struct size");
     }
-    std.debug.print("\n", .{});
 }
 
 test "left most function" {
@@ -245,6 +334,28 @@ test "Walk function" {
         .left_child = &firstParent,
         .right_child = &secondParent,
     };
+
+    const page_alloc = std.heap.page_allocator;
+
+    var preOrderArr = try page_alloc.alloc(u8, 7);
+    var preOrderPointer: usize = 0;
+    preOrderTraversal(root, preOrderArr, &preOrderPointer);
+
+    var inOrderArr = try page_alloc.alloc(u8, 7);
+    var inOrderPointer: usize = 0;
+    inOrderTraversal(root, inOrderArr, &inOrderPointer);
+
+    // std.debug.print("\n", .{});
+    // for (preOrderArr) |item| {
+    // std.debug.print("{}, ", .{item});
+    // }
+    // std.debug.print("\n", .{});
+    //
+    // std.debug.print("\n", .{});
+    // for (inOrderArr) |item| {
+    // std.debug.print("{}, ", .{item});
+    // }
+    // std.debug.print("\n", .{});
 
     // Important to start with 1. otherwise bitshifting on 0s would do nothing.
     try expectEqual(@as(u8, 0b00000100), walk(root, 1, 1).?);
