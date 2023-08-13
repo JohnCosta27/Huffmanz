@@ -130,9 +130,7 @@ pub fn main() !void {
     // Format
     // TreeSize (u64) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
 
-    std.debug.print("{}\n", .{item_counter});
     const size_as_u8 = u64ToBytes(item_counter);
-    std.debug.print("{}\n", .{size_as_u8[7]});
 
     try writer.writeAll(size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
