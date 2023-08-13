@@ -269,9 +269,20 @@ fn count_bits_used(num: u8) u8 {
     return 8 - counter;
 }
 
-test "Random stuff\n" {
+fn mirror_bitmask(bitmask: u64) u64 {
+    var mirrored: u64 = 0;
+    var i: usize = 0;
+    while (i < @bitSizeOf(u8)) {
+        mirrored |= (bitmask >> @truncate(u3, i) & 1) << @truncate(u3, 7 - i);
+        i += 1;
+    }
+    return mirrored;
+}
+
+test "Flip number\n" {
     var x: u8 = 0b11101010;
-    try expectEqual(~x % 2, 1);
+
+    try expectEqual(mirror_bitmask(x), 0b01010111);
 }
 
 test "left most function" {
