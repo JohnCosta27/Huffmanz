@@ -43,7 +43,7 @@ pub fn main() !void {
 
     var heap = try Heap(TreeNode, lessThanTree).init(page_alloc);
     var mapIter = charMap.iterator();
-    var item_counter: u64 = 0;
+    var item_counter: u16 = 0;
 
     while (mapIter.next()) |entry| {
         const node = try allocator.create(TreeNode);
@@ -54,9 +54,10 @@ pub fn main() !void {
             .right_child = null,
         };
         item_counter += 1;
-
         heap.insert(node.*);
     }
+
+    var internal_counter: u8 = 0;
 
     // At least 2 items in heap.
     while (heap.pointer > 1) {
@@ -85,13 +86,14 @@ pub fn main() !void {
         };
 
         copies[2] = .{
-            .value = 0,
+            .value = internal_counter,
             .probability = left.?.probability + right.?.probability,
             .left_child = &copies[0],
             .right_child = &copies[1],
         };
 
         item_counter += 1;
+        internal_counter += 1;
 
         heap.insert(copies[2]);
     }
@@ -117,7 +119,7 @@ pub fn main() !void {
     const file = try std.fs.cwd().createFile("output.bin", .{ .read = true });
     const writer = file.writer();
 
-    const bytes = u64ToBytes(bitmask);
+    const bytes = std.mem.asBytes(&bitmask);
 
     var preOrderArr = try allocator.alloc(u8, item_counter);
     var preOrderIndex: usize = 0;
@@ -128,14 +130,32 @@ pub fn main() !void {
     inOrderTraversal(nodePointer, inOrderArr, &inOrderIndex);
 
     // Format
-    // TreeSize (u64) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
+    // TreeSize (u16) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
 
-    const size_as_u8 = u64ToBytes(item_counter);
+    const size_as_u8 = std.mem.asBytes(&item_counter);
 
     try writer.writeAll(size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
     try writer.writeAll(inOrderArr[0..]);
     try writer.writeAll(bytes[0..]);
+
+    std.debug.print("------\n", .{});
+    try decompress();
+}
+
+fn decompress() !void {
+    const page_alloc = std.heap.page_allocator;
+    var arena = std.heap.ArenaAllocator.init(page_alloc);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    const findFile = try std.fs.cwd().openFile("output.bin", .{});
+    const max_size: usize = 999999;
+    const content = try findFile.reader().readAllAlloc(allocator, max_size);
+
+    const tree_size = @intCast(u16, content[0]) + (@intCast(u16, content[1]) << 8);
+    var index: u8 = 0;
+    _ = try build_tree(allocator, content[2..(tree_size + 2)], content[(tree_size + 2)..(tree_size * 2 + 2)], 0, @truncate(u8, tree_size) - 1, &index);
 }
 
 fn preOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
@@ -165,7 +185,7 @@ fn inOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
 }
 
 fn search_node(traversal: []u8, value: u8) u8 {
-    var i = 0;
+    var i: u8 = 0;
     while (i < traversal.len) {
         if (traversal[i] == value) {
             return i;
@@ -175,44 +195,38 @@ fn search_node(traversal: []u8, value: u8) u8 {
     @panic("Could not find node in traversal");
 }
 
-fn build_tree(preOrder: []u8, inOrder: []u8, inOrderStart: u8, inOrderEnd: u8, preOrderIndex: *u8) *TreeNode {
+fn build_tree(allocator: std.mem.Allocator, preOrder: []u8, inOrder: []u8, inOrderStart: u8, inOrderEnd: u8, preOrderIndex: *u8) !*TreeNode {
     if (inOrderStart > inOrderEnd) {
-        return null;
+        return undefined;
     }
 
-    var node = TreeNode{
+    var node = try allocator.create(TreeNode);
+    node.* = .{
         .value = preOrder[preOrderIndex.*],
         .probability = 0,
         .left_child = null,
         .right_child = null,
     };
+    preOrderIndex.* += 1;
 
     if (inOrderStart == inOrderEnd) {
-        return &node;
+        return node;
     }
 
     const inOrderIndex = search_node(inOrder, node.value);
 
-    node.left_child = build_tree(preOrder, inOrder, inOrderStart, inOrderIndex - 1, preOrderIndex);
-    node.right_child = build_tree(preOrder, inOrder, inOrderIndex, inOrderEnd);
+    node.left_child = try build_tree(allocator, preOrder, inOrder, inOrderStart, inOrderIndex - 1, preOrderIndex);
+    node.right_child = try build_tree(allocator, preOrder, inOrder, inOrderIndex + 1, inOrderEnd, preOrderIndex);
 
     return node;
 }
 
-// Probably a better way to do this
-fn u64ToBytes(u: u64) []u8 {
-    var bytes: [8]u8 = undefined;
-
-    bytes[0] = @truncate(u8, u >> 56);
-    bytes[1] = @truncate(u8, u >> 48);
-    bytes[2] = @truncate(u8, u >> 40);
-    bytes[3] = @truncate(u8, u >> 32);
-    bytes[4] = @truncate(u8, u >> 24);
-    bytes[5] = @truncate(u8, u >> 16);
-    bytes[6] = @truncate(u8, u >> 8);
-    bytes[7] = @truncate(u8, u);
-
-    return bytes[0..];
+fn convertToU64(arr: *[8]u8) u64 {
+    var result: u64 = 0;
+    for (arr.*) |value, i| {
+        result |= @as(u64, value) << @truncate(u6, (8 * i));
+    }
+    return result;
 }
 
 fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
@@ -256,19 +270,8 @@ fn count_bits_used(num: u8) u8 {
 }
 
 test "Random stuff\n" {
-    var myStruct = TreeNode{
-        .value = 1,
-        .probability = 321,
-        .left_child = null,
-        .right_child = null,
-    };
-
-    var byteSlice = std.mem.toBytes(myStruct);
-    const expectedSize = @sizeOf(TreeNode);
-
-    if (byteSlice.len != expectedSize) {
-        @panic("Byte slice size doesn't match struct size");
-    }
+    var x: u8 = 0b11101010;
+    try expectEqual(~x % 2, 1);
 }
 
 test "left most function" {
