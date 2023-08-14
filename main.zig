@@ -136,6 +136,8 @@ pub fn main() !void {
     const size_as_u8 = std.mem.asBytes(&item_counter);
     const word_size_as_u8 = std.mem.asBytes(&wordSize);
 
+    std.debug.print("{b}\n", .{bitmask});
+
     try writer.writeAll(size_as_u8[0..]);
     try writer.writeAll(word_size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
@@ -157,18 +159,61 @@ fn decompress() !void {
 
     const tree_size = @intCast(u16, content[0]) + (@intCast(u16, content[1]) << 8);
 
-    const word_size = @as(usize, convertToU64(content[0..@sizeOf(usize)]));
+    const word_size = @as(usize, convertToU64(content[2 .. @sizeOf(usize) + 2]));
     std.debug.print("Word Size: {}\n", .{word_size});
 
     const offset = @sizeOf(u16) + @sizeOf(usize);
 
     var index: u8 = 0;
-    _ = try build_tree(allocator, content[offset..(tree_size + offset)], content[(tree_size + offset)..(tree_size * 2 + offset)], 0, @truncate(u8, tree_size) - 1, &index);
+    var tree = try build_tree(allocator, content[offset..(tree_size + offset)], content[(tree_size + offset)..(tree_size * 2 + offset)], 0, @truncate(u8, tree_size) - 1, &index);
 
     // Mirrored so we can do % 2 trick to know to go left or right.
     const bitmask_offset = tree_size * 2 + offset;
-    const mirrored_bitmask = std.mem.readInt(u64, @ptrCast(*const [8]u8, &content[bitmask_offset..(bitmask_offset + 8)]), std.builtin.Endian.Little);
-    std.debug.print("{b}\n", .{mirrored_bitmask});
+    // const bitmask = std.mem.readVarInt(u64, @ptrCast(*const [8]u8, &content[bitmask_offset..(bitmask_offset + 8)]), std.builtin.Endian.Little);
+
+    var bitmask: u64 = 0;
+
+    bitmask |= @as(u64, content[bitmask_offset]) << 0;
+    bitmask |= @as(u64, content[bitmask_offset + 1]) << 8;
+    bitmask |= @as(u64, content[bitmask_offset + 2]) << 16;
+    bitmask |= @as(u64, content[bitmask_offset + 3]) << 24;
+    bitmask |= @as(u64, content[bitmask_offset + 4]) << 32;
+    bitmask |= @as(u64, content[bitmask_offset + 5]) << 40;
+    bitmask |= @as(u64, content[bitmask_offset + 6]) << 48;
+    bitmask |= @as(u64, content[bitmask_offset + 7]) << 56;
+
+    var word = try allocator.alloc(u8, word_size);
+    var char_counter: u8 = 0;
+    var current_node: *const TreeNode = tree;
+
+    var mirrored_bitmask = mirror_bitmask(bitmask);
+
+    var counter: u8 = 0;
+    while (counter < 64 and char_counter < word_size) {
+        const first_bit = mirrored_bitmask & 1;
+
+        if (first_bit == 1) {
+            current_node = current_node.right_child.?;
+        } else {
+            current_node = current_node.left_child.?;
+        }
+
+        // Fix later. Using 50 because I had to randomise internal tree nodes values.
+        if (current_node.value > 50) {
+            word[char_counter] = current_node.value;
+            current_node = tree;
+            char_counter += 1;
+        }
+
+        mirrored_bitmask = mirrored_bitmask >> 1;
+        counter += 1;
+    }
+
+    std.debug.print("\n", .{});
+    for (word) |c| {
+        std.debug.print("{c}", .{c});
+    }
+    std.debug.print("\n", .{});
 }
 
 fn preOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
