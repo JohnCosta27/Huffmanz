@@ -23,7 +23,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "aabcd";
+    const myString = "this is a longer wz";
     const wordSize = myString.len;
 
     // Map between ASCII and frequency
@@ -108,6 +108,33 @@ pub fn main() !void {
         var pattern = walk(nodePointer, char, 1).?;
         var bits_used = count_bits_used(pattern) - 1;
 
+        var remaining = @as(i16, @bitSizeOf(u64)) - @as(i16, bitmask_used);
+
+        if (remaining < bits_used) {
+            // How many bits we need to fit into the current u64 mask
+            // const fit = bits_used - remaining;
+
+            var helper: u8 = std.math.pow(u8, 2, bits_used);
+
+            std.debug.print("pattern: {b}\n", .{pattern});
+            std.debug.print("helper: {b}\n", .{helper});
+
+            std.debug.print("left bit: {b}\n", .{pattern & helper});
+            helper = helper >> 1;
+
+            std.debug.print("left bit: {b}\n", .{pattern & helper});
+            helper = helper >> 1;
+
+            std.debug.print("left bit: {b}\n", .{pattern & helper});
+            helper = helper >> 1;
+
+            std.debug.print("left bit: {b}\n", .{pattern & helper});
+            helper = helper >> 1;
+
+            std.debug.print("left bit: {b}\n", .{pattern & helper});
+            helper = helper >> 1;
+        }
+
         // Probably a better way to do this.
         // I tried bitshifting, but zig doesn't like shifting by non comptime values.
         var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
@@ -169,7 +196,6 @@ fn decompress() !void {
 
     // Mirrored so we can do % 2 trick to know to go left or right.
     const bitmask_offset = tree_size * 2 + offset;
-    // const bitmask = std.mem.readVarInt(u64, @ptrCast(*const [8]u8, &content[bitmask_offset..(bitmask_offset + 8)]), std.builtin.Endian.Little);
 
     var bitmask: u64 = 0;
 
@@ -198,8 +224,8 @@ fn decompress() !void {
             current_node = current_node.left_child.?;
         }
 
-        // Fix later. Using 50 because I had to randomise internal tree nodes values.
-        if (current_node.value > 50) {
+        // Fix later. Using 30 because I had to randomise internal tree nodes values.
+        if (current_node.value > 30) {
             word[char_counter] = current_node.value;
             current_node = tree;
             char_counter += 1;
