@@ -23,7 +23,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "this is a longer wz";
+    const myString = "this is a longer word";
     const wordSize = myString.len;
 
     // Map between ASCII and frequency
@@ -200,16 +200,18 @@ fn decompress() !void {
     // Mirrored so we can do % 2 trick to know to go left or right.
     const bitmask_offset = tree_size * 2 + offset;
 
+    var bitmasks_used: usize = 0;
+
     var bitmask: u64 = 0;
 
-    bitmask |= @as(u64, content[bitmask_offset]) << 0;
-    bitmask |= @as(u64, content[bitmask_offset + 1]) << 8;
-    bitmask |= @as(u64, content[bitmask_offset + 2]) << 16;
-    bitmask |= @as(u64, content[bitmask_offset + 3]) << 24;
-    bitmask |= @as(u64, content[bitmask_offset + 4]) << 32;
-    bitmask |= @as(u64, content[bitmask_offset + 5]) << 40;
-    bitmask |= @as(u64, content[bitmask_offset + 6]) << 48;
-    bitmask |= @as(u64, content[bitmask_offset + 7]) << 56;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset]) << 0;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 1]) << 8;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 2]) << 16;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 3]) << 24;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 4]) << 32;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 5]) << 40;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 6]) << 48;
+    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 7]) << 56;
 
     var word = try allocator.alloc(u8, word_size);
     var char_counter: u8 = 0;
@@ -235,7 +237,24 @@ fn decompress() !void {
         }
 
         mirrored_bitmask = mirrored_bitmask >> 1;
-        counter += 1;
+
+        if (counter != 63) {
+            counter += 1;
+            continue;
+        }
+
+        counter = 0;
+        bitmask = 0;
+        bitmasks_used += 1;
+
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset]) << 0;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 1]) << 8;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 2]) << 16;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 3]) << 24;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 4]) << 32;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 5]) << 40;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 6]) << 48;
+        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 7]) << 56;
     }
 
     std.debug.print("\n", .{});
