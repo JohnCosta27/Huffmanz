@@ -204,14 +204,14 @@ fn decompress() !void {
 
     var bitmask: u64 = 0;
 
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset]) << 0;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 1]) << 8;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 2]) << 16;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 3]) << 24;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 4]) << 32;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 5]) << 40;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 6]) << 48;
-    bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 7]) << 56;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset]) << 0;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 1]) << 8;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 2]) << 16;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 3]) << 24;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 4]) << 32;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 5]) << 40;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 6]) << 48;
+    bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 7]) << 56;
 
     var word = try allocator.alloc(u8, word_size);
     var char_counter: u8 = 0;
@@ -247,14 +247,16 @@ fn decompress() !void {
         bitmask = 0;
         bitmasks_used += 1;
 
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset]) << 0;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 1]) << 8;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 2]) << 16;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 3]) << 24;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 4]) << 32;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 5]) << 40;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 6]) << 48;
-        bitmask |= @as(u64, content[bitmasks_used + bitmask_offset + 7]) << 56;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset]) << 0;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 1]) << 8;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 2]) << 16;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 3]) << 24;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 4]) << 32;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 5]) << 40;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 6]) << 48;
+        bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 7]) << 56;
+
+        mirrored_bitmask = mirror_bitmask(bitmask);
     }
 
     std.debug.print("\n", .{});
