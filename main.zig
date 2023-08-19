@@ -23,7 +23,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "this is a longer word";
+    const myString = "this is a longer word dsnbajd nsakjjnkdsajnkdsa jnkdsajnk das jnkdsa jnkasdjn kdasjn ksda jnkdasjn kads jnkdasjnk asd jnkdasjndsasda kjnasdjnk adsjnk  kasdjnjn dkas jnkasd jkndas kjnsda kjnasdjnk asdjnk ads kjnasdnjk";
     const wordSize = myString.len;
 
     // Map between ASCII and frequency
@@ -101,7 +101,9 @@ pub fn main() !void {
 
     const nodePointer = heap.remove().?;
 
-    var my_bitmasks = try allocator.alloc(u64, 10);
+    const BUFFER_SIZE = 10;
+
+    var my_bitmasks = try allocator.alloc(u64, BUFFER_SIZE);
     var bitmask_index: usize = 0;
 
     my_bitmasks[bitmask_index] = 0;
@@ -125,6 +127,12 @@ pub fn main() !void {
             bitmask.* |= split_pattern;
 
             bitmask_index += 1;
+
+            // We must relloac, as we reached end of our buffer.
+            if (bitmask_index == my_bitmasks.len) {
+                my_bitmasks = try allocator.realloc(my_bitmasks, my_bitmasks.len + BUFFER_SIZE);
+            }
+
             my_bitmasks[bitmask_index] = 0;
             bitmask = &my_bitmasks[bitmask_index];
             bitmask_used = 0;
