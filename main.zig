@@ -101,38 +101,40 @@ pub fn main() !void {
 
     const nodePointer = heap.remove().?;
 
-    var bitmask: u64 = 0;
+    var my_bitmasks = try allocator.alloc(u64, 10);
+    var bitmask_index: usize = 0;
+
+    my_bitmasks[bitmask_index] = 0;
+    var bitmask: *u64 = &my_bitmasks[bitmask_index];
+
     var bitmask_used: u8 = 0;
 
     for (myString) |char| {
+        // Pattern starting with 1, so that we don't lose the left 0s
         var pattern = walk(nodePointer, char, 1).?;
+
+        // -1 because our pattern contains a left most 1, to not lose the 0s.
         var bits_used = count_bits_used(pattern) - 1;
 
-        var remaining = @as(i16, @bitSizeOf(u64)) - @as(i16, bitmask_used);
+        const remaining = @bitSizeOf(u64) - bitmask_used;
 
         if (remaining < bits_used) {
-            // How many bits we need to fit into the current u64 mask
-            // const fit = bits_used - remaining;
+            var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
+            var split_pattern = @as(u64, clean_pattern >> @truncate(u3, bits_used - remaining));
 
-            var helper: u8 = std.math.pow(u8, 2, bits_used);
+            bitmask.* |= split_pattern;
 
-            std.debug.print("pattern: {b}\n", .{pattern});
-            std.debug.print("helper: {b}\n", .{helper});
+            bitmask_index += 1;
+            my_bitmasks[bitmask_index] = 0;
+            bitmask = &my_bitmasks[bitmask_index];
+            bitmask_used = 0;
 
-            std.debug.print("left bit: {b}\n", .{pattern & helper});
-            helper = helper >> 1;
+            // We must take whats left of this current pattern.
+            var helper: u8 = @as(u8, 0b11111111) >> @truncate(u3, 8 - (bits_used - remaining));
+            pattern = clean_pattern & helper;
+            pattern = pattern + std.math.pow(u8, 2, bits_used - remaining);
 
-            std.debug.print("left bit: {b}\n", .{pattern & helper});
-            helper = helper >> 1;
-
-            std.debug.print("left bit: {b}\n", .{pattern & helper});
-            helper = helper >> 1;
-
-            std.debug.print("left bit: {b}\n", .{pattern & helper});
-            helper = helper >> 1;
-
-            std.debug.print("left bit: {b}\n", .{pattern & helper});
-            helper = helper >> 1;
+            bits_used = bits_used - remaining;
         }
 
         // Probably a better way to do this.
@@ -140,14 +142,12 @@ pub fn main() !void {
         var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
         var shifted_pattern = @as(u64, clean_pattern) << @truncate(u6, (64 - bits_used - bitmask_used));
 
-        bitmask |= shifted_pattern;
+        bitmask.* |= shifted_pattern;
         bitmask_used += bits_used;
     }
 
     const file = try std.fs.cwd().createFile("output.bin", .{ .read = true });
     const writer = file.writer();
-
-    const bytes = std.mem.asBytes(&bitmask);
 
     var preOrderArr = try allocator.alloc(u8, item_counter);
     var preOrderIndex: usize = 0;
@@ -163,13 +163,16 @@ pub fn main() !void {
     const size_as_u8 = std.mem.asBytes(&item_counter);
     const word_size_as_u8 = std.mem.asBytes(&wordSize);
 
-    std.debug.print("{b}\n", .{bitmask});
-
     try writer.writeAll(size_as_u8[0..]);
     try writer.writeAll(word_size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
     try writer.writeAll(inOrderArr[0..]);
-    try writer.writeAll(bytes[0..]);
+
+    var c: usize = 0;
+    while (c <= bitmask_index) {
+        try writer.writeAll(std.mem.asBytes(&my_bitmasks[c]));
+        c += 1;
+    }
 
     try decompress();
 }
