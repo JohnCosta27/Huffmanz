@@ -23,7 +23,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "this is a longer word dsnbajd nsakjjnkdsajnkdsa jnkdsajnk das jnkdsa jnkasdjn kdasjn ksda jnkdasjn kads jnkdasjnk asd jnkdasjndsasda kjnasdjnk adsjnk  kasdjnjn dkas jnkasd jkndas kjnsda kjnasdjnk asdjnk ads kjnasdnjk";
+    const myString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
     const wordSize = myString.len;
 
     // Map between ASCII and frequency
@@ -58,8 +58,6 @@ pub fn main() !void {
         heap.insert(node.*);
     }
 
-    var internal_counter: u8 = 0;
-
     // At least 2 items in heap.
     while (heap.pointer > 1) {
         const left = heap.remove();
@@ -87,14 +85,13 @@ pub fn main() !void {
         };
 
         copies[2] = .{
-            .value = internal_counter,
+            .value = 0,
             .probability = left.?.probability + right.?.probability,
             .left_child = &copies[0],
             .right_child = &copies[1],
         };
 
         item_counter += 1;
-        internal_counter += 1;
 
         heap.insert(copies[2]);
     }
@@ -161,12 +158,8 @@ pub fn main() !void {
     var preOrderIndex: usize = 0;
     preOrderTraversal(nodePointer, preOrderArr, &preOrderIndex);
 
-    var inOrderArr = try allocator.alloc(u8, item_counter);
-    var inOrderIndex: usize = 0;
-    inOrderTraversal(nodePointer, inOrderArr, &inOrderIndex);
-
     // Format
-    // TreeSize (u16) --- PreOrder [TreeSize]u8 --- InOrder [Treesize]u8 --- HuffmanCode []u8
+    // TreeSize (u16) --- PreOrder [TreeSize]u8 --- HuffmanCode []u8
 
     const size_as_u8 = std.mem.asBytes(&item_counter);
     const word_size_as_u8 = std.mem.asBytes(&wordSize);
@@ -174,7 +167,6 @@ pub fn main() !void {
     try writer.writeAll(size_as_u8[0..]);
     try writer.writeAll(word_size_as_u8[0..]);
     try writer.writeAll(preOrderArr[0..]);
-    try writer.writeAll(inOrderArr[0..]);
 
     var c: usize = 0;
     while (c <= bitmask_index) {
@@ -202,11 +194,11 @@ fn decompress() !void {
 
     const offset = @sizeOf(u16) + @sizeOf(usize);
 
-    var index: u8 = 0;
-    var tree = try build_tree(allocator, content[offset..(tree_size + offset)], content[(tree_size + offset)..(tree_size * 2 + offset)], 0, @truncate(u8, tree_size) - 1, &index);
+    var index: usize = 0;
+    var tree = try build_simple_tree(allocator, content[offset..(tree_size + offset)], &index);
 
     // Mirrored so we can do % 2 trick to know to go left or right.
-    const bitmask_offset = tree_size * 2 + offset;
+    const bitmask_offset = tree_size + offset;
 
     var bitmasks_used: usize = 0;
 
@@ -222,7 +214,7 @@ fn decompress() !void {
     bitmask |= @as(u64, content[bitmasks_used * 8 + bitmask_offset + 7]) << 56;
 
     var word = try allocator.alloc(u8, word_size);
-    var char_counter: u8 = 0;
+    var char_counter: usize = 0;
     var current_node: *const TreeNode = tree;
 
     var mirrored_bitmask = mirror_bitmask(bitmask);
@@ -237,8 +229,7 @@ fn decompress() !void {
             current_node = current_node.left_child.?;
         }
 
-        // Fix later. Using 30 because I had to randomise internal tree nodes values.
-        if (current_node.value > 30) {
+        if (current_node.value != 0) {
             word[char_counter] = current_node.value;
             current_node = tree;
             char_counter += 1;
@@ -287,52 +278,29 @@ fn preOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
     }
 }
 
-fn inOrderTraversal(node: TreeNode, arr: []u8, arrPointer: *usize) void {
-    if (node.left_child) |left| {
-        inOrderTraversal(left.*, arr, arrPointer);
+fn build_simple_tree(allocator: std.mem.Allocator, preOrder: []u8, index: *usize) !*TreeNode {
+    if (preOrder[index.*] != 0) {
+        var node = try allocator.create(TreeNode);
+        node.* = .{
+            .value = preOrder[index.*],
+            .probability = 0,
+            .left_child = null,
+            .right_child = null,
+        };
+        index.* += 1;
+        return node;
     }
-
-    arr[arrPointer.*] = node.value;
-    arrPointer.* += 1;
-
-    if (node.right_child) |right| {
-        inOrderTraversal(right.*, arr, arrPointer);
-    }
-}
-
-fn search_node(traversal: []u8, value: u8) u8 {
-    var i: u8 = 0;
-    while (i < traversal.len) {
-        if (traversal[i] == value) {
-            return i;
-        }
-        i += 1;
-    }
-    @panic("Could not find node in traversal");
-}
-
-fn build_tree(allocator: std.mem.Allocator, preOrder: []u8, inOrder: []u8, inOrderStart: u8, inOrderEnd: u8, preOrderIndex: *u8) !*TreeNode {
-    if (inOrderStart > inOrderEnd) {
-        return undefined;
-    }
-
     var node = try allocator.create(TreeNode);
     node.* = .{
-        .value = preOrder[preOrderIndex.*],
+        .value = 0,
         .probability = 0,
         .left_child = null,
         .right_child = null,
     };
-    preOrderIndex.* += 1;
+    index.* += 1;
 
-    if (inOrderStart == inOrderEnd) {
-        return node;
-    }
-
-    const inOrderIndex = search_node(inOrder, node.value);
-
-    node.left_child = try build_tree(allocator, preOrder, inOrder, inOrderStart, inOrderIndex - 1, preOrderIndex);
-    node.right_child = try build_tree(allocator, preOrder, inOrder, inOrderIndex + 1, inOrderEnd, preOrderIndex);
+    node.*.left_child = try build_simple_tree(allocator, preOrder, index);
+    node.*.right_child = try build_simple_tree(allocator, preOrder, index);
 
     return node;
 }
@@ -468,22 +436,6 @@ test "Walk function" {
     var preOrderArr = try page_alloc.alloc(u8, 7);
     var preOrderPointer: usize = 0;
     preOrderTraversal(root, preOrderArr, &preOrderPointer);
-
-    var inOrderArr = try page_alloc.alloc(u8, 7);
-    var inOrderPointer: usize = 0;
-    inOrderTraversal(root, inOrderArr, &inOrderPointer);
-
-    // std.debug.print("\n", .{});
-    // for (preOrderArr) |item| {
-    // std.debug.print("{}, ", .{item});
-    // }
-    // std.debug.print("\n", .{});
-    //
-    // std.debug.print("\n", .{});
-    // for (inOrderArr) |item| {
-    // std.debug.print("{}, ", .{item});
-    // }
-    // std.debug.print("\n", .{});
 
     // Important to start with 1. otherwise bitshifting on 0s would do nothing.
     try expectEqual(@as(u8, 0b00000100), walk(root, 1, 1).?);
