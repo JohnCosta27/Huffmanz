@@ -5,18 +5,19 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(std.heap.page_allocator);
     const stdout = std.io.getStdOut().writer();
 
-    if (args.len != 3) {
-        try stdout.print("You need 2 args\n", .{});
+    if (args.len != 4) {
+        try stdout.print("You need 3 args\n", .{});
         return;
     }
 
     const option = args[1];
     const file_path = args[2];
+    const output_path = args[3];
 
     if (compare_strings(option, "encode")) {
-        try Encoding.encode(file_path);
+        try Encoding.encode(file_path, output_path);
     } else if (compare_strings(option, "decode")) {
-        try Encoding.decompress();
+        try Encoding.decompress(file_path, output_path);
         return;
     } else {
         try stdout.print("Available options: encode | decode\n", .{});

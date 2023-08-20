@@ -16,7 +16,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) std.math.Order {
 // Handle the encoding from a file path.
 // And write endoding to an output file
 //
-pub fn encode(file_path: [:0]const u8) !void {
+pub fn encode(file_path: [:0]const u8, output_path: [:0]const u8) !void {
     const page_alloc = std.heap.page_allocator;
 
     const findFile = try std.fs.cwd().openFile(file_path, .{});
@@ -148,7 +148,7 @@ pub fn encode(file_path: [:0]const u8) !void {
         bitmask_used += bits_used;
     }
 
-    const file = try std.fs.cwd().createFile("output.bin", .{ .read = true });
+    const file = try std.fs.cwd().createFile(output_path, .{ .read = true });
     const writer = file.writer();
 
     var preOrderArr = try allocator.alloc(u8, item_counter);
@@ -172,13 +172,13 @@ pub fn encode(file_path: [:0]const u8) !void {
     }
 }
 
-pub fn decompress() !void {
+pub fn decompress(file_path: [:0]const u8, output_path: [:0]const u8) !void {
     const page_alloc = std.heap.page_allocator;
     var arena = std.heap.ArenaAllocator.init(page_alloc);
     const allocator = arena.allocator();
     defer arena.deinit();
 
-    const findFile = try std.fs.cwd().openFile("output.bin", .{});
+    const findFile = try std.fs.cwd().openFile(file_path, .{});
     const max_size: usize = 999999;
     var content = try findFile.reader().readAllAlloc(allocator, max_size);
 
@@ -251,7 +251,7 @@ pub fn decompress() !void {
         mirrored_bitmask = Utils.mirror_bitmask(bitmask);
     }
 
-    const file = try std.fs.cwd().createFile("output.txt", .{ .read = true });
+    const file = try std.fs.cwd().createFile(output_path, .{ .read = true });
     const writer = file.writer();
 
     try writer.writeAll(word[0..]);
