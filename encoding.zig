@@ -183,10 +183,7 @@ pub fn decompress() !void {
     var content = try findFile.reader().readAllAlloc(allocator, max_size);
 
     const tree_size = @intCast(u16, content[0]) + (@intCast(u16, content[1]) << 8);
-    std.debug.print("Tree Size: {}\n", .{tree_size});
-
     const word_size = @as(usize, Utils.convert_to_u64(content[2 .. @sizeOf(usize) + 2]));
-    std.debug.print("Word Size: {}\n", .{word_size});
 
     const offset = @sizeOf(u16) + @sizeOf(usize);
 
@@ -254,9 +251,8 @@ pub fn decompress() !void {
         mirrored_bitmask = Utils.mirror_bitmask(bitmask);
     }
 
-    std.debug.print("\n", .{});
-    for (word) |c| {
-        std.debug.print("{c}", .{c});
-    }
-    std.debug.print("\n", .{});
+    const file = try std.fs.cwd().createFile("output.txt", .{ .read = true });
+    const writer = file.writer();
+
+    try writer.writeAll(word[0..]);
 }
