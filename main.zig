@@ -23,6 +23,7 @@ fn lessThanTree(A: TreeNode, B: TreeNode) Order {
 
 pub fn main() !void {
     const page_alloc = std.heap.page_allocator;
+    // const myString = "BR.<> Athe quick brown fox jumps over the lazy dog THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG the quick brown fox jumps over the lazy dog  DOG .,/?><";
     const myString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
     const wordSize = myString.len;
 
@@ -106,20 +107,20 @@ pub fn main() !void {
     my_bitmasks[bitmask_index] = 0;
     var bitmask: *u64 = &my_bitmasks[bitmask_index];
 
-    var bitmask_used: u8 = 0;
+    var bitmask_used: u16 = 0;
 
     for (myString) |char| {
         // Pattern starting with 1, so that we don't lose the left 0s
         var pattern = walk(nodePointer, char, 1).?;
 
         // -1 because our pattern contains a left most 1, to not lose the 0s.
-        var bits_used = count_bits_used(pattern) - 1;
+        var bits_used: u16 = count_bits_used(pattern) - 1;
 
         const remaining = @bitSizeOf(u64) - bitmask_used;
 
         if (remaining < bits_used) {
-            var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
-            var split_pattern = @as(u64, clean_pattern >> @truncate(u3, bits_used - remaining));
+            var clean_pattern = pattern - std.math.pow(u16, 2, bits_used);
+            var split_pattern = @as(u64, clean_pattern >> @truncate(u4, bits_used - remaining));
 
             bitmask.* |= split_pattern;
 
@@ -135,16 +136,16 @@ pub fn main() !void {
             bitmask_used = 0;
 
             // We must take whats left of this current pattern.
-            var helper: u8 = @as(u8, 0b11111111) >> @truncate(u3, 8 - (bits_used - remaining));
+            var helper: u16 = @as(u16, 0xFFFF) >> @truncate(u4, 16 - (bits_used - remaining));
             pattern = clean_pattern & helper;
-            pattern = pattern + std.math.pow(u8, 2, bits_used - remaining);
+            pattern = pattern + std.math.pow(u16, 2, bits_used - remaining);
 
             bits_used = bits_used - remaining;
         }
 
         // Probably a better way to do this.
         // I tried bitshifting, but zig doesn't like shifting by non comptime values.
-        var clean_pattern = pattern - std.math.pow(u8, 2, bits_used);
+        var clean_pattern = pattern - std.math.pow(u16, 2, bits_used);
         var shifted_pattern = @as(u64, clean_pattern) << @truncate(u6, (64 - bits_used - bitmask_used));
 
         bitmask.* |= shifted_pattern;
@@ -188,6 +189,7 @@ fn decompress() !void {
     var content = try findFile.reader().readAllAlloc(allocator, max_size);
 
     const tree_size = @intCast(u16, content[0]) + (@intCast(u16, content[1]) << 8);
+    std.debug.print("Tree Size: {}\n", .{tree_size});
 
     const word_size = @as(usize, convertToU64(content[2 .. @sizeOf(usize) + 2]));
     std.debug.print("Word Size: {}\n", .{word_size});
@@ -230,7 +232,7 @@ fn decompress() !void {
         }
 
         if (current_node.value != 0) {
-            word[char_counter] = current_node.value;
+            word[char_counter] = current_node.*.value;
             current_node = tree;
             char_counter += 1;
         }
@@ -313,7 +315,7 @@ fn convertToU64(arr: *[8]u8) u64 {
     return result;
 }
 
-fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
+fn walk(node: TreeNode, search: u16, path: u16) ?u16 {
     var myPath = path;
 
     if (node.value == search) {
@@ -343,14 +345,14 @@ fn walk(node: TreeNode, search: u8, path: u8) ?u8 {
     return null;
 }
 
-fn count_bits_used(num: u8) u8 {
-    var mask: u8 = 0b10000000;
+fn count_bits_used(num: u16) u8 {
+    var mask: u16 = 0b1000000000000000;
     var counter: u8 = 0;
     while (mask != 0 and mask & num == 0) {
         counter += 1;
         mask = mask >> 1;
     }
-    return 8 - counter;
+    return @bitSizeOf(u16) - counter;
 }
 
 fn mirror_bitmask(bitmask: u64) u64 {
