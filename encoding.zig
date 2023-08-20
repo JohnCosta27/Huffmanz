@@ -16,15 +16,19 @@ fn lessThanTree(A: TreeNode, B: TreeNode) std.math.Order {
 // Handle the encoding from a file path.
 // And write endoding to an output file
 //
-pub fn encode() !void {
+pub fn encode(file_path: [:0]const u8) !void {
     const page_alloc = std.heap.page_allocator;
-    const myString = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
-    const wordSize = myString.len;
+
+    const findFile = try std.fs.cwd().openFile(file_path, .{});
+    const max_size: usize = 999999;
+    var content = try findFile.reader().readAllAlloc(page_alloc, max_size);
+    const wordSize = content.len;
+    defer page_alloc.free(content);
 
     // Map between ASCII and frequency
     var charMap = std.AutoHashMap(u8, i32).init(page_alloc);
 
-    for (myString) |char| {
+    for (content) |char| {
         const mapChar = charMap.get(char);
         if (mapChar != null) {
             try charMap.put(char, mapChar.? + 1);
@@ -101,7 +105,7 @@ pub fn encode() !void {
 
     var bitmask_used: u16 = 0;
 
-    for (myString) |char| {
+    for (content) |char| {
         // Pattern starting with 1, so that we don't lose the left 0s
         var pattern = Tree.walk(nodePointer, char, 1).?;
 
